@@ -1,7 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Created on Fri Jun 24 10:51:37 2022
+SiameseNet.py
 
-@author: Richy Yun
+Siamese network trained to learn differences between neural data
+Neural data is collected with a Utah array in the motor cortex of a subject 
+doing a 2D center-out task with 8 targets
+
 """
 

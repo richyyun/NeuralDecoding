@@ -1,3 +1,10 @@
+"""
+SaveTrialData.py
+
+Get neural data around each trial and re-save for each trial in each type of trial
+
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
@@ -7,6 +14,7 @@ import pandas as pd
 import os
 import time
 from scipy.interpolate import interp1d
+
 
 ''' Function for loading matlab files '''
 def loadmatfile(fname):
@@ -21,6 +29,7 @@ def loadmatfile(fname):
         data[k] = np.array(v)
     return data
 
+''' Function for getting triggered trials '''
 def gettrialinds(trig, win, lim):
     trialinds = np.tile(win, [trig.shape[1],1])
     trialinds = trialinds.T + trig
@@ -29,7 +38,9 @@ def gettrialinds(trig, win, lim):
     trialinds = trialinds[np.logical_not(bad)]
     return trialinds
 
-tankpath = 'R:/Yun/Spanky/CycleTriggered-170710-143939'
+
+''' Loop through all experiments '''
+tankpath = 'Datapath'
 
 fdata = 'CleanData.mat'
 data = loadmatfile(tankpath+'/'+fdata)
@@ -37,8 +48,8 @@ fnames = np.squeeze(data['List'])
 Experiments = [f[0] for f in fnames]
 Duration = np.squeeze(data['Duration'])
 
-savebasepath = 'C:/Users/Richy Yun/Dropbox/Projects/NeuralDecoding/Data'
-newfs = 500
+savebasepath = os.getcwd() + '/Data'
+newfs = 500 # downsample to 500 Hz
 
 for exp in range(len(Experiments)):
 
@@ -47,7 +58,7 @@ for exp in range(len(Experiments)):
     
     blockname = Experiments[exp]
     
-    
+    # Load data
     print('Loading Data...', end ="")
     start = time.time()
     
@@ -81,6 +92,7 @@ for exp in range(len(Experiments)):
     print('Done, ' + str(round(end-start, 2)) + 's')
     
     
+    # Downsample
     print('Resampling...', end ="")
     start = time.time()
 
@@ -101,6 +113,8 @@ for exp in range(len(Experiments)):
     print('Saving Data')
     win = np.arange(np.round(-0.5*newfs), np.round(2.5*newfs))
     
+    
+    # Loop through each type of trial
     for i in range(1,10):   
         
         if i == 5:
@@ -125,6 +139,8 @@ for exp in range(len(Experiments)):
 
         alltrials = np.moveaxis(alltrials, 1, 0)
         
+        # Save as a parquet file for faster loading
+        # Turns out pandas has a built in function that implements pyarrow
         for t in range(alltrials.shape[0]):
             df = pd.DataFrame(alltrials[t, :, :])
             df.columns = df.columns.astype(str)
@@ -139,47 +155,6 @@ for exp in range(len(Experiments)):
     
     endexp = time.time()
     print('Total ' + str(round(endexp-startexp, 2)) + 's')
-
-
-
-
-# # # Testing 
-# # ''' Trial triggered averages of LFPs and spectra '''
-# TrigAvg = {}
-# Spectra = {}
-# for i in range(1,10):
-#     if i == 5:
-#         continue
-    
-#     trig = np.round(trialstart[trialtype==i]/bfs*newfs)
-#     win = np.arange(np.round(-0.5*newfs), np.round(2.5*newfs))
-#     trialinds = gettrialinds(trig.astype(int), win.astype(int), len(dwnsample[0,:]))
-    
-#     allavg = np.empty((96, trialinds.shape[1]))
-#     allspect = []
-#     for c in range(96):
-#         trials = dwnsample[c][trialinds]
-#         allavg[c] = np.mean(trials, axis=0)
-#         f, t, spect = scipy.signal.stft(trials, fs=np.squeeze(newfs), nperseg=200, noverlap=190, window='hamming')
-#         if c == 0:
-#             allspect = np.empty((96, spect.shape[1], spect.shape[2]))
-#         allspect[c] = np.mean(abs(spect), axis=0)
-        
-#     TrigAvg[i] = allavg
-#     Spectra[i] = allspect
-    
-    
-# # ''' Plot some examples '''
-# # plt.plot(TrigAvg[5].T)    
-    
-    
-# ''' Trial triggered averages of spectra '''
-# f, t, spect = scipy.signal.stft(trials, fs=np.squeeze(newfs), nperseg=250, noverlap=240, window='hamming')
-# t = t-0.5
-# spect = np.mean(abs(spect), axis=0);
-# plt.imshow(abs(spect), aspect='auto', extent=[t[0], t[-1], f[-1], f[0]])
-# plt.ylim([0, 50])
-
 
 
 
