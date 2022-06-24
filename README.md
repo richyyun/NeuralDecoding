@@ -15,7 +15,7 @@ I could perform the decoding with a simple recurrent neural network that would l
 To that end, I will train a siamese neural network to discern between different types of input data consisting of left, right, up, or down targets. The output of the network is essentially an "embedding" of the data, which can then be used to determine whether novel data belongs to one of the original trial types or a new trial type. The zero-shot learning can be implemented in a smalle trained neural network with fully connected layers or a simple heuristic. 
 
 <p align="center">
-  <img src="https://github.com/richyyun/NeuralDecoding/blob/main/Approach.png" />
+  <img src="https://github.com/richyyun/NeuralDecoding/blob/master/Approach.png" />
 </p>
 
 ## To do
