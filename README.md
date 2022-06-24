@@ -22,7 +22,7 @@ To that end, I will train a siamese neural network to discern between different 
 
 ## To do
 - ~~Curate the data into sections of LFP for each trial~~
-- Implement the simaese neural network - start with simple LSTM (possibly with an initial 1D convolution to further compress the data)  
+- Implement the simaese neural network - start with simple LSTM, possibly with an initial 1D convolution to further compress the data.  
   - Train on all trial types
   - Train limited to 4 trial types
   - Compare the two networks and their outputs 
