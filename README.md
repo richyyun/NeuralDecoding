@@ -1,5 +1,7 @@
 # TrackRatCNN 
 
+\**Work in progress*\*
+
 ## Goal of the project
 My goal is to decode data from a Utah array implanted in primary motor cortex of an animal performing a 2-dimensional center out task with wrist torques. The task first prompts the animal to relax and have the cursor in the middle of the screen. Then a target appears on the edge of the screen (one of 8 possible locations: left, right, up, down, and each corner) which cues the animal to move the cursor into the target. After the cursor reaches the target, the target moves to the center so the animal relaxes again. The data consists of 96 channel LFP data of 0.5 seconds before to 2.5 seconds after trial completion sampled at 500 Hz. 
 
