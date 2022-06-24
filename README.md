@@ -5,6 +5,14 @@
 ## Goal of the project
 My goal is to decode data from a Utah array implanted in primary motor cortex of an animal performing a 2-dimensional center out task with wrist torques. The task first prompts the animal to relax and have the cursor in the middle of the screen. Then a target appears on the edge of the screen (one of 8 possible locations: left, right, up, down, and each corner) which cues the animal to move the cursor into the target. After the cursor reaches the target, the target moves to the center so the animal relaxes again. The data consists of 96 channel LFP data of 0.5 seconds before to 2.5 seconds after trial completion sampled at 500 Hz. 
 
+## To do
+- ~~Curate the data into sections of LFP for each trial~~
+- Implement the simaese neural network - start with simple LSTM, possibly with an initial 1D convolution to further compress the data.  
+  - Train on all trial types
+  - Train limited to 4 trial types
+  - Compare the two networks and their outputs 
+- Implement zero-shot learning with the outputs of the siamese neural network  
+
 ## Approach
 As I am now much more comfortable with neural networks and machine learning, I wanted to tackle a problem that is both more complex and within the BCI field. A large part of data analysis in neuroscience both in research and industry is neural decoding, or deciphering what neural signals mean. Machine learning is clearly a useful tool for neural decoding, but there are two main issues that need to be solved for proper commercialization:
 1. Neural data is highly variable. Neural data changes drastically on a day-to-day basis even with implanted invasive electrodes, not to mention inter-subject variability or changes due to non-invasive headset positioning. Traditional neural networks will have to be constantly retrained or somehow incorporate extreme generalizability. The data in this project was collected from a single animal but across 8 months, which means we need to figure out how to tackle this problem.
@@ -19,11 +27,3 @@ To that end, I will train a siamese neural network to discern between different 
 <p align="center">
   <img src="https://github.com/richyyun/NeuralDecoding/blob/master/Approach.png" />
 </p>
-
-## To do
-- ~~Curate the data into sections of LFP for each trial~~
-- Implement the simaese neural network - start with simple LSTM, possibly with an initial 1D convolution to further compress the data.  
-  - Train on all trial types
-  - Train limited to 4 trial types
-  - Compare the two networks and their outputs 
-- Implement zero-shot learning with the outputs of the siamese neural network  
