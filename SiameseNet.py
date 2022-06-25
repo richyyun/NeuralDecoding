@@ -13,7 +13,6 @@ import pandas as pd
 import os
 import time
 import torch
-import torchvision
 from torch import nn
 
 
@@ -79,6 +78,7 @@ class Triplet(torch.utils.data.Dataset):
         data = pd.read_parquet(filepath)
         data = pd.DataFrame.to_numpy(data)
         data = torch.from_numpy(data)
+        data = data.float()
         data = data.to(self.device)
         return data
     
@@ -100,8 +100,10 @@ testloader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuff
 
 ''' Define model '''
 class siamese(nn.Module):                    
-    def __init__(self, bidirectional): 
+    def __init__(self, bidirectional, device): 
         super(siamese,self).__init__()    
+        
+        self.device = device
         
         # Convolutional layers
         kernel_size = 3         
@@ -110,8 +112,8 @@ class siamese(nn.Module):
         
         lin = 1500  # input length is set to 1500
         lout = 150  # desired output length. Too long and it will slow down the LSTM
-        kernel_size = lin-lout+1
-        self.MaxPool1 =  nn.MaxPool1d(kernel_size)
+        kernel_size = int(lin / lout)
+        self.MaxPool1 =  nn.MaxPool1d(kernel_size=kernel_size)
         
         kernel_size = 3         
         padding = int((kernel_size-1)/2)   # Keep same length with stride 1
@@ -119,8 +121,8 @@ class siamese(nn.Module):
         
         lin = lout
         seq_len = 15
-        kernel_size = lin-seq_len+1
-        self.MNaxPool2 = nn.MaxPool2d(kernel_size)        
+        kernel_size = int(lin / seq_len)
+        self.MaxPool2 = nn.MaxPool1d(kernel_size=kernel_size)        
         
         # LSTM
         self.hidden_size = 10           # Number of hidden features
@@ -146,37 +148,96 @@ class siamese(nn.Module):
     def forward(self, x):      
         
         # Go through convolutional layers
-        conv = self.Conv1(x)
-        conv = self.MaxPool1(conv)
-        conv = self.Conv2(conv)
-        conv = self.MaxPool2(conv)
+        conv1 = self.Conv1(x)
+        conv1 = self.MaxPool1(conv1)
+        conv2 = self.Conv2(conv1)
+        conv2 = self.MaxPool2(conv2)
+        
+        conv2 = conv2.permute(0, 2, 1)  # Need to reorder dimensions for LSTM
         
         # Initialize hidden and cell states
         batch_size = x.shape[0] 
         self.h0c0(batch_size)
         
         # LSTM layer
-        lstm, self.hidden = self.LSTM(x, self.hidden)
+        lstm, self.hidden = self.LSTM(conv2, self.hidden)
         
         # Fully connected layer
         fc = torch.flatten(lstm, start_dim=1)
         y = self.Linear(fc)
         
-        return y, #lstm, conv # For debugging
+        # Keep length to 1 (project to unit circle)
+        y = nn.functional.normalize(input=y, p=2, dim=1) 
+        
+        return y #, lstm, conv1, conv2 # For debugging
 
 
 def distance(a, b):
-    return np.sum(np.square(a-b), axis=-1)
+    dist = (a-b).pow(2)
+    dist = dist.sum(1).sqrt()
+    return dist
 
 
 # Initialize model
-model = siamese(False)
+model = siamese(False, device)
 model = model.float()
 model = model.to(device)
 
+# Optimizer
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-6)
 
+# Loss function
+alpha = 1
+triplet_loss = nn.TripletMarginLoss(margin=alpha)
 
+epochs = 10
+verbose_steps = 1
+TrainLoss = np.zeros((epochs, len(trainloader)))
+start = time.time()
+for e in range(epochs):
+    b = 0
+    for anchor, positive, negative, idx in trainloader:
+    
+        # Find semi-hard triplets to train from
+        model.eval()
+        
+        anchor_out = model(anchor)
+        positive_out = model(positive)
+        negative_out = model(negative)
+        
+        positive_dist = distance(anchor_out, positive_out)
+        negative_dist = distance(anchor_out, negative_out)
+        
+        easy = positive_dist + alpha < negative_dist
+        hard = negative_dist < positive_dist
+        semi_hard = (positive_dist < negative_dist) & (negative_dist < positive_dist+alpha)
+        
+        # Restructure to train on semi-hard triplets
+        anchor = anchor[semi_hard, :, :]
+        positive = positive[semi_hard, :, :]
+        negative = negative[semi_hard, :, :]
+        
+        model.train()
+        
+        anchor_out = model(anchor)
+        positive_out = model(positive)
+        negative_out = model(negative)
+        
+        loss = triplet_loss(anchor_out, positive_out, negative_out)
+        
+        # Gradient step 
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
+        TrainLoss[e, b] = loss.item()
+
+        if b%verbose_steps == 0:
+            print('Epoch:', e+1 , '/', epochs, ' Batch:', b+1, '/', len(trainloader))
+            print('Training Loss:', TrainLoss[e, b])
+            print('Time:', time.time()-start)
+            
+        b+=1
 
 
 
