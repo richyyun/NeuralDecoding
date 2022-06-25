@@ -10,27 +10,46 @@ doing a 2D center-out task with 8 targets
 import random
 import numpy as np
 import pandas as pd
+import pickle
 import os
 import time
 import torch
 from torch import nn
+import matplotlib.pyplot as plt
 
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE" 
 
 
 # Define device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Define dataset
-class Triplet(torch.utils.data.Dataset):
+class TripletData(torch.utils.data.Dataset):
     
     # Simple init
     def __init__(self, exppath, device):
         self.exppath = exppath
         self.device = device
         
+        self.data = {}
+        trialpaths = list(os.listdir(self.exppath))
+        for trialtype in trialpaths:   
+            trialpath = os.path.join(exppath, trialtype)
+            trials = list(os.listdir(trialpath))
+            for t in trials:
+                self.data[(trialtype, t)] = self.loadData(os.path.join(trialpath, t))
+        
         self.getTriplets()
-           
-    # Get file paths of all triplets. All possible anchor and positive combinations with randomly chosen negatives         
+     
+    # Load data, all saved data should be parquet files
+    def loadData(self, filepath):
+        data = pd.read_parquet(filepath)
+        data = pd.DataFrame.to_numpy(data)
+        data = torch.from_numpy(data)
+        data = data.float()
+        return data    
+     
+    # Set trial type and trial number for each triplet
     def getTriplets(self):
         self.alabel = []    # List containing paths to the anchor file
         self.plabel = []    # List containing paths to the positive file
@@ -48,8 +67,8 @@ class Triplet(torch.utils.data.Dataset):
             
             for i in range(num_trials):
                 for j in range(i+1, num_trials):
-                    self.alabel.append(os.path.join(trialpath, trials[i]))
-                    self.plabel.append(os.path.join(trialpath, trials[j]))
+                    self.alabel.append((trialtype, trials[i]))
+                    self.plabel.append((trialtype, trials[j]))
                     self.atype.append(trialtype)
                     
                     n_trialtype = random.choice(trialpaths)
@@ -60,32 +79,24 @@ class Triplet(torch.utils.data.Dataset):
                     n_trialpath = os.path.join(exppath, n_trialtype)
                     n_files = list(os.listdir(n_trialpath))
                     
-                    self.nlabel.append(os.path.join(n_trialpath, random.choice(n_files)))
+                    self.nlabel.append((n_trialtype, random.choice(n_files)))
                 
     # Length of dataset
     def __len__(self):
         return len(self.alabel)                        
         
-    # Load and return the data for each triplet
+    # Return the data for each index
     def __getitem__(self, idx):
-        anchor = self.loadData(self.alabel[idx])
-        positive = self.loadData(self.plabel[idx])
-        negative = self.loadData(self.nlabel[idx])
+        anchor = self.data[self.alabel[idx]].to(self.device)
+        positive = self.data[self.plabel[idx]].to(self.device)
+        negative = self.data[self.nlabel[idx]].to(self.device)
         return anchor, positive, negative, idx, # self.atype[idx], self.ntype[idx] # For debugging
     
-    # Load data, all saved data should be parquet files
-    def loadData(self, filepath):
-        data = pd.read_parquet(filepath)
-        data = pd.DataFrame.to_numpy(data)
-        data = torch.from_numpy(data)
-        data = data.float()
-        data = data.to(self.device)
-        return data
-    
+   
 
 # Set up path to dataset
 exppath = os.getcwd() + '/Data/Spanky-170901-131421'
-data = Triplet(exppath, device)
+data = TripletData(exppath, device)
 
 # Split dataset into train and test data
 testsize = int(0.2*np.floor(len(data)))
@@ -172,6 +183,7 @@ class siamese(nn.Module):
         return y #, lstm, conv1, conv2 # For debugging
 
 
+# For calculating distance to find semi-hard triplets
 def distance(a, b):
     dist = (a-b).pow(2)
     dist = dist.sum(1).sqrt()
@@ -184,13 +196,13 @@ model = model.float()
 model = model.to(device)
 
 # Optimizer
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-6)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-6)
 
 # Loss function
-alpha = 1
+alpha = 0.2
 triplet_loss = nn.TripletMarginLoss(margin=alpha)
 
-epochs = 10
+epochs = 50
 verbose_steps = 1
 TrainLoss = np.zeros((epochs, len(trainloader)))
 start = time.time()
@@ -230,19 +242,30 @@ for e in range(epochs):
         loss.backward()
         optimizer.step()
 
+        # Save losses
         TrainLoss[e, b] = loss.item()
 
+        # Print statistics
         if b%verbose_steps == 0:
             print('Epoch:', e+1 , '/', epochs, ' Batch:', b+1, '/', len(trainloader))
             print('Training Loss:', TrainLoss[e, b])
             print('Time:', time.time()-start)
             
-        b+=1
+        b += 1
 
 
+## Save trained model
+modelfile = os.getcwd() + '/Models/Custom_TrainTest_Reg1.pt'
+torch.save(model.state_dict(), modelfile)
+print('Model Saved')
 
 
-
+## Save losses
+lossfile = os.getcwd() + '/Losses/Custom_TrainTest_Reg1.pkl'
+file = open(lossfile,'wb')
+pickle.dump(TrainLoss, file)
+print('Losses Saved')
+file.close()
 
 
 
