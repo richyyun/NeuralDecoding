@@ -24,6 +24,11 @@ def saveParquet(data, savefile):
     df.columns = df.columns.astype(str)
     df.to_parquet(savefile)
 
+def movmean(data, win):
+    for i in range(data.shape[0]):
+        data[i,:] = np.convolve(data[i,:], np.ones((win)), mode='same')/win
+    return data
+
 for exp in experiments:
     print('Starting ' + exp + ', ' + str(experiments.index(exp)+1) + '/' + str(len(experiments)))    
     startexp = time.time()
@@ -64,8 +69,11 @@ for exp in experiments:
         savefile = trialpath + '/Averaged_norm.parquet'
         saveParquet(avgtrial, savefile)
         
+        # Plot smoothed average 
+        smoothed = movmean(avgtrial, 25)
+        
         ax = plt.subplot(3, 3, int(trial))
-        plt.plot(win/fs, data.T, zorder=1)
+        plt.plot(win/fs, smoothed.T, zorder=1)
         plt.vlines(0,plt.ylim()[0],plt.ylim()[1], zorder=2)
         
         ax.spines['top'].set_visible(False)
