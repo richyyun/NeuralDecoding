@@ -40,6 +40,8 @@ for exp in experiments:
     fig = plt.figure() 
     fig.set_size_inches(10,10)
     for trial in trialtypes:
+        if(not str.isdigit(trial)):
+            continue
         print('Trial ' + trial + '...', end ="")
         start = time.time()
         
@@ -74,7 +76,8 @@ for exp in experiments:
         
         ax = plt.subplot(3, 3, int(trial))
         plt.plot(win/fs, smoothed.T, zorder=1)
-        plt.vlines(0,plt.ylim()[0],plt.ylim()[1], zorder=2)
+        yl = plt.ylim()
+        plt.vlines(0, yl[0], yl[1], zorder=2)
         
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
@@ -82,7 +85,7 @@ for exp in experiments:
         ax.spines['left'].set_visible(False)
 
         ax.get_xaxis().set_ticks([-0.5,0,2.5])
-        ax.get_yaxis().set_ticks([0])
+        ax.get_yaxis().set_ticks([yl[0], 0, yl[1]])
         
         end = time.time()
         print('Done, ' + str(round(end-start, 2)) + 's')
