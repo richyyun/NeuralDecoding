@@ -7,6 +7,8 @@ My goal is to decode data from a Utah array implanted in primary motor cortex of
 
 ## To do
 - ~~Curate the data into sections of LFP for each trial~~
+- Normalize the data and plot to see trial-dependent changes **&larr; Currently in progress**
+- Implement an RNN to ensure the raw LFP or the spectra can accurately predict trial types
 - Implement the simaese neural network - start with simple LSTM, possibly with an initial 1D convolution to further compress the data.  
   - Determine an effective triplet loss implementation
     - Triplet loss can be tricky, and may require online mining to find semi-hard triplets
