@@ -19,11 +19,13 @@ experiments = list(os.listdir(datapath))
 fs = 500
 win = np.arange(np.round(-0.5*fs), np.round(2.5*fs))
 
+# Save a 2D numpy array into a parquet file using pandas
 def saveParquet(data, savefile):
     df = pd.DataFrame(data)
     df.columns = df.columns.astype(str)
     df.to_parquet(savefile)
 
+# Calculate moving average 
 def movmean(data, win):
     for i in range(data.shape[0]):
         data[i,:] = np.convolve(data[i,:], np.ones((win)), mode='same')/win
@@ -50,6 +52,9 @@ for exp in experiments:
         
         avgtrial = []
         for t in trialnums:
+            if 'norm' in t:
+                continue;
+            
             # Load
             file = os.path.join(trialpath, t)
             data = pd.read_parquet(file)
@@ -90,8 +95,8 @@ for exp in experiments:
         end = time.time()
         print('Done, ' + str(round(end-start, 2)) + 's')
     
-    figname = exppath + '/AllTrials.png'
-    plt.savefig(figname)
+    figname = exppath + '/AllTrials.eps'
+    plt.savefig(figname, format='eps')
     plt.close(fig)
                     
     end = time.time()

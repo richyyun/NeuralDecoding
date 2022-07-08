@@ -63,7 +63,7 @@ class TripletData(torch.utils.data.Dataset):
         # Loop through each trial type. For each possible anchor-positive pair, find a random negative 
         for trialtype in trialpaths:
             
-            trialpath = os.path.join(exppath, trialtype)
+            trialpath = os.path.join(self.exppath, trialtype)
             trials = list(os.listdir(trialpath))
             num_trials = len(trials)
             
